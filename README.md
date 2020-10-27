@@ -33,7 +33,8 @@ Esse é um repositório para compartilhar um trabalho em Python 3 de reconhecime
 | [Face Recognition](https://pypi.org/project/face-recognition/) | `pip3 install face-recognition` |
 | [Numpy](https://pypi.org/project/numpy/) | `pip3 install numpy` |
 | [Open CV](https://pypi.org/project/opencv-python/) | `pip3 install opencv-python` |
-| [PySimpleGUI](https://pypi.org/project/PySimpleGUI/) | `pip install PySimpleGUI` |
+| [PySimpleGUI](https://pypi.org/project/PySimpleGUI/) | `pip install PySimpleGUI` |    
+| [SQLite](https://pypi.org/project/pysqlite3/) | `pip install pysqlite3` |
 
 ## Pull Requests
 
