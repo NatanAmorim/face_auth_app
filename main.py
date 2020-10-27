@@ -3,6 +3,28 @@ import cv2
 import numpy as np
 import face_recognition
 import os
+import sqlite3
+
+# Niveis de Acesso
+# 1 Usuário
+# 2 Gerente
+# 3 Diretor
+
+try:
+    db = sqlite3.connect('users.db')
+    cursor = db.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            acesso INTEGER NOT NULL
+    );
+    """)
+    print('Sucesso na conexão com o banco de dados.')
+except:
+    print('Erro na conexão com o banco de dados.')
+finally:
+    db.close()
 
 sg.theme('SandyBeach')
 
@@ -13,11 +35,20 @@ autenticado = False
 sair = False
 
 try:
-    with open("nomes.txt", "r") as file:
-        nomes = file.read().split(",")
-        nomes = map(str.upper, nomes)
+    db = sqlite3.connect('users.db')
+    cursor = db.cursor()
+    cursor.row_factory = lambda cursor, row: row[0]
+    cursor.execute("""
+    SELECT nome FROM usuarios   ;
+    """)
+
+    nomes = cursor.fetchall()
+
+    print('Sucesso na conexão com o banco de dados.')
 except:
-    print('Arquivo de Nomes não encontrado!')
+    print('Erro na conexão com o banco de dados.')
+finally:
+    db.close()
 
 if nomes is not None:
     layout = [[sg.Text("Digite o seu ID")],
@@ -75,6 +106,46 @@ if not (event == 'Sair'):
     window.close()
 
 if cadastro:
+    cadastro_acesso = True
+
+    layout_cadastro_acesso = [[sg.Text("Qual o nível de acesso? OBS: nível 2 e 3 requer senha.")],
+                     [sg.Input(key='-INPUT-')],
+                     [sg.Text(size=(40, 1), key='-OUTPUT-')],
+                     [sg.Button('Acesso 1'), sg.Button('Acesso 2')],
+                     [sg.Button('Acesso 3'), sg.Button('Sair')]]
+
+    window = sg.Window('Nivel de acesso', layout_cadastro_acesso)
+else:
+    cadastro_acesso = False
+
+while cadastro_acesso:
+    event, values = window.read()
+
+    if event == sg.WINDOW_CLOSED or event == 'Sair':
+        sair = True
+        break
+
+    if event == 'Acesso 1':
+        acesso = 1
+        break
+
+    if event == 'Acesso 2' and values['-INPUT-'] == 'senha123':
+        acesso = 2
+        break
+    elif event == 'Acesso 2' and not values['-INPUT-'] == 'senha123':
+        window['-OUTPUT-'].update('Senha para Acesso de nível 2 invalida!')
+        sg.Popup('Senha para Acesso de nível 2 invalida!', keep_on_top=True, no_titlebar=True,
+                 auto_close_duration=1, auto_close=False)
+
+    if event == 'Acesso 3' and  values['-INPUT-'] == 'senha1234':
+        acesso = 3
+        break
+    elif event == 'Acesso 3' and not values['-INPUT-'] == 'senha1234':
+        window['-OUTPUT-'].update('Senha para Acesso de nível 3 invalida!')
+        sg.Popup('Senha para Acesso de nível 3 invalida!', keep_on_top=True, no_titlebar=True,
+                 auto_close_duration=1, auto_close=False)
+
+if cadastro:
     layout_cadastro = [[sg.Text("Qual o seu ID?")],
                        [sg.Input(key='-INPUT-')],
                        [sg.Text(size=(40, 1), key='-OUTPUT-')],
@@ -99,8 +170,7 @@ if cadastro:
                            sg.Button('Foto', size=(10, 1), font='Helvetica 14'),
                            sg.Button('Sair', size=(10, 1), font='Helvetica 14'), ]]
 
-                window = sg.Window('WebCam',
-                                   layout, location=(800, 400))
+                window = sg.Window('WebCam', layout, location=(800, 400))
 
                 cap.set(3, 640)  # width=640
                 cap.set(4, 480)  # height=480
@@ -124,9 +194,23 @@ if cadastro:
                         if event == 'Foto':
                             _, frame = cap.read()
                             if _ and frame is not None:
-                                cv2.imwrite(f"fotos/{id}.jpg", frame)
-                                with open("nomes.txt", "a") as myfile:
-                                    myfile.write("," + id.upper())
+                                try:
+                                    db = sqlite3.connect('users.db')
+                                    cursor = db.cursor()
+                                    cursor.execute("""
+                                    INSERT INTO usuarios (nome, acesso)
+                                    VALUES (?,?)
+                                    """, (id, int(acesso)))
+
+                                    db.commit()
+
+                                    print('Dados inseridos com sucesso.')
+                                except:
+                                    print('Erro na conexão com o banco de dados.')
+                                finally:
+                                    db.close()
+
+                                cv2.imwrite(f"fotos/{id.upper().replace(' ', '')}.jpg", frame)
                             cadastrado = True
 window.close()
 
@@ -209,9 +293,31 @@ if autenticado:
                   'PROGRESS': ('#EEEEEE', '#C7D5E0'),
                   'BORDER': 1, 'SLIDER_DEPTH': 0, 'PROGRESS_DEPTH': 0}
 
-    # sg.theme_add_new('Dashboard', theme_dict)     # if using 4.20.0.1+
     sg.LOOK_AND_FEEL_TABLE['Dashboard'] = theme_dict
-    sg.theme('SandyBeach')
+
+    try:
+        db = sqlite3.connect('users.db')
+        cursor = db.cursor()
+        cursor.row_factory = lambda cursor, row: row[0]
+
+        cursor.execute("""
+        SELECT acesso FROM usuarios WHERE nome LIKE ? LIMIT 1
+        """, (id,))
+
+        acesso = cursor.fetchone()
+
+        print('Sucesso na conexão com o banco de dados.')
+    except:
+        print('Erro na conexão com o banco de dados.')
+    finally:
+        db.close()
+
+    if acesso == 1:
+        sg.theme('SandyBeach')
+    elif acesso == 2:
+        sg.theme('DarkBlue4')
+    elif acesso == 3:
+        sg.theme('LightBrown13')
 
     BORDER_COLOR = '#C7D5E0'
     DARK_HEADER_COLOR = '#EEEEEE'
@@ -223,7 +329,7 @@ if autenticado:
     top_banner = [[sg.Text('Dashboard' + ' ' * 64, font='Any 20', background_color=DARK_HEADER_COLOR),
                    sg.Text('Segunda-feira 26 Outubro', font='Any 20', background_color=DARK_HEADER_COLOR)]]
 
-    top = [[sg.Text(f'Sejá bem vindo {id}!', size=(50, 1), justification='c', pad=BPAD_TOP, font='Any 20')],
+    top = [[sg.Text(f'Sejá bem vindo {id}! nível de acesso {acesso}.', size=(50, 1), justification='c', pad=BPAD_TOP, font='Any 20')],
            [sg.T(f'{i * 25}-{i * 34}') for i in range(7)], ]
 
     block_3 = [[sg.Text('Titulo 3', font='Any 20')],
