@@ -10,6 +10,8 @@ import sqlite3
 # 2 Gerente
 # 3 Diretor
 
+# Consulta se já existe uma tabela no banco de dados 'users.db'
+# Se a tabela 'usuarios' não existir em 'users.db', é criado a tabela
 try:
     db = sqlite3.connect('users.db')
     cursor = db.cursor()
@@ -26,14 +28,17 @@ except:
 finally:
     db.close()
 
+# Tema do PySimpleGUI
 sg.theme('SandyBeach')
 
+# Flags necessarias para checar a etapa do programa
 nomes = None
 cadastro = False
 cadastrado = False
 autenticado = False
 sair = False
 
+# Seleciona todos os usuarios do banco de dados e coloca em uma lista() na variavel 'nomes'
 try:
     db = sqlite3.connect('users.db')
     cursor = db.cursor()
@@ -50,6 +55,8 @@ except:
 finally:
     db.close()
 
+# Layout da UI de Cadastro e Login
+# Se não houver nenhum usuario cadastrado só sera possivel cadastrar
 if nomes is not None:
     layout = [[sg.Text("Digite o seu ID")],
           [sg.Input(key='-INPUT-')],
@@ -60,9 +67,11 @@ else:
               [sg.Text(size=(40, 1), key='-OUTPUT-')],
               [sg.Button('Cadastrar'), sg.Button('Sair')]]
 
+# Mostrar janela de cadastro e login
 window = sg.Window('Face Auth App', layout)
 
-while True:
+# Loop que checa eventos para verificar conteúdo do texto de input e botãoes clicacados
+ while True:
     event, values = window.read()
     if event == sg.WINDOW_CLOSED or event == 'Sair':
         sair = True
@@ -78,8 +87,11 @@ while True:
     else:
         window['-OUTPUT-'].update("ID não encontrado!")
 
+# Fechar jánela de cadastro
 window.close()
 
+# Se o usuário não quis sair do programa, criar layout de conexão com a webcam
+# O layout permite escrever o IP da webcam no campo de texto ou conectar diretamente
 if not (event == 'Sair'):
     layout_webcam = [[sg.Text("Qual o Tipo de WebCam?")],
                      [sg.Input(key='-INPUT-')],
@@ -105,6 +117,9 @@ if not (event == 'Sair'):
 
     window.close()
 
+# Se for cadastro de usuário cadastrar o nível de acesso
+# O acesso 1 básico é aberto para todos
+# O acesso 2 e 3 requer senha
 if cadastro:
     cadastro_acesso = True
 
@@ -145,6 +160,8 @@ while cadastro_acesso:
         sg.Popup('Senha para Acesso de nível 3 invalida!', keep_on_top=True, no_titlebar=True,
                  auto_close_duration=1, auto_close=False)
 
+# Se for cadastro de usuário cadastrar o nível de acesso
+# Construir layout para cadastro de id
 if cadastro:
     layout_cadastro = [[sg.Text("Qual o seu ID?")],
                        [sg.Input(key='-INPUT-')],
@@ -213,7 +230,14 @@ if cadastro:
                                 cv2.imwrite(f"fotos/{id.upper().replace(' ', '')}.jpg", frame)
                             cadastrado = True
 window.close()
-
+      
+"""                                           
+ com o minímo de 1 foto é usado face_recognition + dlib + openCV para interpretar a foto reconhecer
+rostos e usando histograma, determinar as distancias das características da face e mapear com pontos
+reconhecer quando é uma face conhecida e desenhar um quadrado com legenda do nome em baixo                                            
+"""
+                                            
+# Aqui é feito o decoding das faces, transformando em pontos e medindo as distancias
 if True:
     autenticado = False
     imagens = list()
@@ -281,6 +305,7 @@ if True:
 cap.release()
 cv2.destroyAllWindows()
 
+# se o usuário foi autenticado com sucesso, criar a interface básica do programa                                  
 if autenticado:
     import PySimpleGUI as sg
 
@@ -294,7 +319,7 @@ if autenticado:
                   'BORDER': 1, 'SLIDER_DEPTH': 0, 'PROGRESS_DEPTH': 0}
 
     sg.LOOK_AND_FEEL_TABLE['Dashboard'] = theme_dict
-
+    # acessar o banco de dados e conseguir o nível de acesso do usuário autenticado
     try:
         db = sqlite3.connect('users.db')
         cursor = db.cursor()
@@ -311,7 +336,8 @@ if autenticado:
         print('Erro na conexão com o banco de dados.')
     finally:
         db.close()
-
+                                            
+    # A cor do programa muda de acordo com o nivel de acesso do usuário
     if acesso == 1:
         sg.theme('SandyBeach')
     elif acesso == 2:
@@ -359,7 +385,7 @@ if autenticado:
     sg.Popup(f"Olá {name} login autorizado por reconhecimento facial!", keep_on_top=True, no_titlebar=True,
              auto_close_duration=1, auto_close=False)
 
-    while True:  # Event Loop
+    while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Sair':
             break
